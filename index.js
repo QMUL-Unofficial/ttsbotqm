@@ -175,6 +175,12 @@ async function ensureJoinedVC(memberOrGuild) {
     encryptionMode: "aead_xchacha20_poly1305_rtpsize"
   });
 
+  if (connection) {
+    connection.on("stateChange", (oldState, newState) => {
+      console.log("VOICE state:", oldState.status, "->", newState.status);
+    });
+  }
+
   try {
     await entersState(connection, VoiceConnectionStatus.Ready, 15000);
     connection.subscribe(player);
