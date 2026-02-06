@@ -195,6 +195,10 @@ async function ensureJoinedVC(memberOrGuild) {
   }
 }
 
+connection.on("stateChange", (oldState, newState) => {
+  console.log("VOICE state:", oldState.status, "->", newState.status);
+});
+
 // =====================
 // SPEAK QUEUE
 // =====================
