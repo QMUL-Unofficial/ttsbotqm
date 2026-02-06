@@ -296,13 +296,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === "join") {
-    const ok = await ensureJoinedVC(FIXED_VC_ID ? interaction.guild : interaction.member);
+    // ✅ fetch the real GuildMember so member.voice.channel is correct on hosted bots
+    const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+  
+    const ok = await ensureJoinedVC(FIXED_VC_ID ? interaction.guild : member);
     if (ok) {
       return interaction.reply({
         content: `Joined <#${ok.joinConfig.channelId}>. Reading from <#${TARGET_TEXT_CHANNEL_ID}>.`,
         ephemeral: true,
       });
     }
+  
     return interaction.reply({
       content: "Join a voice channel first (or set FIXED_VOICE_CHANNEL_ID), then use /join.",
       ephemeral: true,
