@@ -170,6 +170,9 @@ async function ensureJoinedVC(memberOrGuild) {
     adapterCreator: vc.guild.voiceAdapterCreator,
     selfDeaf: true,
     selfMute: false,
+    group: "tts",
+    // ADD THIS:
+    encryptionMode: "aead_xchacha20_poly1305_rtpsize"
   });
 
   try {
