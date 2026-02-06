@@ -13,5 +13,6 @@
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
     "google-tts-api": "^2.0.2"
+    "engines": { "node": "20.x" }
   }
 }
