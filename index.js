@@ -264,3 +264,94 @@ async function registerCommands() {
       await rest.put(Routes.applicationGuildCommands(client.user.id, GUILD_ID), {
         body: slashCommands,
       });
+      console.log(`Registered slash commands to guild ${GUILD_ID}`);
+    } else {
+      await rest.put(Routes.applicationCommands(client.user.id), {
+        body: slashCommands,
+      });
+      console.log("Registered global slash commands (can take time to appear).");
+    }
+  } catch (e) {
+    console.warn("Slash command registration failed:", e?.message || e);
+  }
+}
+
+// =====================
+// EVENTS
+// =====================
+client.once(Events.ClientReady, async () => {
+  console.log(`Logged in as ${client.user.tag}`);
+
+  try {
+    console.log(generateDependencyReport());
+  } catch {}
+
+  await registerCommands();
+});
+
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === "join") {
+    const ok = await ensureJoinedVC(FIXED_VC_ID ? interaction.guild : interaction.member);
+    if (ok) {
+      return interaction.reply({
+        content: `Joined <#${ok.joinConfig.channelId}>. Reading from <#${TARGET_TEXT_CHANNEL_ID}>.`,
+        ephemeral: true,
+      });
+    }
+    return interaction.reply({
+      content: "Join a voice channel first (or set FIXED_VOICE_CHANNEL_ID), then use /join.",
+      ephemeral: true,
+    });
+  }
+
+  if (interaction.commandName === "leave") {
+    if (connection) {
+      try { connection.destroy(); } catch {}
+      connection = null;
+      return interaction.reply({ content: "Left the voice channel.", ephemeral: true });
+    }
+    return interaction.reply({ content: "I am not in a voice channel.", ephemeral: true });
+  }
+
+  if (interaction.commandName === "say") {
+    const text = interaction.options.getString("text", true);
+    const ok = connection || (await ensureJoinedVC(FIXED_VC_ID ? interaction.guild : interaction.member));
+    if (!ok) {
+      return interaction.reply({
+        content: "Join a voice channel first (or set FIXED_VOICE_CHANNEL_ID), then try /say again.",
+        ephemeral: true,
+      });
+    }
+
+    await interaction.reply({ content: "Speaking…", ephemeral: true });
+    await speak(`${SPEAK_PREFIX}${text}`);
+  }
+});
+
+client.on(Events.MessageCreate, async (message) => {
+  try {
+    if (message.author.bot) return;
+    if (message.channel.type !== ChannelType.GuildText) return;
+    if (message.channel.id !== TARGET_TEXT_CHANNEL_ID) return;
+
+    // ignore commands like !something or /something
+    if (/^[!/]/.test(message.content)) return;
+
+    const ok = connection || (await ensureJoinedVC(FIXED_VC_ID ? message.guild : message.member));
+    if (!ok) return;
+
+    const display = message.member?.displayName || message.author.username;
+    const content = cleanText(message.content);
+    if (!content) return;
+
+    const toSay = `${SPEAK_PREFIX}${display} said: ${content}`;
+    console.log("Speaking:", toSay);
+    await speak(toSay);
+  } catch (e) {
+    console.error("Message handler error:", e);
+  }
+});
+
+client.login(TOKEN);
